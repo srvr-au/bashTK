@@ -1,0 +1,237 @@
+##########################
+# Name: bashTK (Bash ToolKit) including bashMS (Bash Menu System) and bashDB (Bash DataBase)
+# Version: 0.11
+# Info: https://github.com/acorncss/bashTK
+# Donate: https://www.paypal.com/donate?hosted_button_id=P8USAAG7U2T28
+##########################
+
+declare -rg btkHost=$(hostname)
+declare -rg btkIp=$(hostname -i)
+declare -rg btkRed='\e[1;37;41m\e[K'
+declare -rg btkGre='\e[1;37;42m\e[K'
+declare -rg btkYel='\e[1;37;43m\e[K'
+declare -rg btkBlu='\e[1;37;44m\e[K'
+declare -rg btkPur='\e[1;37;45m\e[K'
+declare -rg btkCya='\e[1;37;46m\e[K'
+declare -rg btkRes='\e[0m'
+declare -rg btkRev='\e[1;7m\e[K'
+declare -rg btkReturn='\n\e[K'
+
+BTKcontinue(){
+  echo -e "${btkYel} Abort (any key) or Continue (y) ? ${btkRes}\n"
+  read -n 1 -s reply
+  [[ $reply != 'y' ]] && { echo -e "EXIT as per your request"; exit 1; } || echo -e "Continuing..."
+}
+BTKpause(){
+  echo -e "${btkBlu} Check above lines. Press any key to Clear & Continue.${btkRes}"
+  read -n 1 -s
+  clear
+  echo "Continuing..."
+}
+BTKask(){
+  declare confirm='n'
+  until [[ $confirm == 'y' ]]; do
+    echo -e "${btkCya} ${1}${btkRes}"
+    read btkAnswer
+    echo -e "${btkRev} Your answer was $btkAnswer, is this correct? (y/n)... ${btkRes}"
+    read -n 1 -s confirm
+  done
+  echo -e "\n"
+}
+BTKerror(){
+  echo -e "${btkRed} ERROR${btkRes}\n${btkRev} ${1}${btkRes}\n${btkRed} ${btkRes}\n"
+  BTKcontinue
+}
+BTKfatalError(){
+  echo -e "${btkRed} ERROR${btkRes}\n${btkRev} ${1}${btkRes}\n${btkRed} ${btkRes}\n"
+  exit 1
+}
+BTKwarn(){
+  echo -e "${btkYel} WARNING${btkRes}\n${btkRev} ${1}${btkRes}\n${btkYel} ${btkRes}\n"
+}
+BTKsuccess(){
+  echo -e "${btkGre} SUCCESS${btkRes}\n${btkRev} ${1}${btkRes}\n${btkGre} ${btkRes}\n"
+}
+BTKinfo(){
+  echo -e "${btkBlu} INFORMATION${btkRes}\n${btkRev} ${1}${btkRes}\n${btkBlu} ${btkRes}\n"
+}
+BTKheader(){
+  echo -e "${btkPur} ${1}${btkRes}\n${btkPur}====================${btkRes}\n"
+}
+BTKrun(){
+  "$@"
+  [[ $? -eq 0 ]] && BTKsuccess "Command Succeeded (${@})." || { echo >&2 -e "${btkRed}Command Failed (${@}). Exiting...${btkRes}"; exit 1;}
+}
+BTKcmdCheck(){
+  [[ $? -eq 0 ]] && BTKsuccess "Command Succeeded (${1})." || BTKerror "Command Failed (${1})."
+}
+BTKbackupOrigConfig(){
+  [[ ! -f ${1}.origbak ]] && cp $1 "${1}.origbak"
+  [[ -f "${1}.origbak" ]] && BTKsuccess "${1}.origbak exists." || BTKerror "${1}.origbak DOES NOT exist. Backup config file failed."
+}
+BTKfileExists(){
+  [[ -f "$1" ]] && BTKsuccess "$1 exists." || BTKerror "$1 does NOT exist."
+}
+BTKsedCheck(){
+  grep "$1" -q "$2" && BTKsuccess "$1 CORRECTLY found in $2" || BTKerror "$1 NOT found in $2"
+}
+BTKsedCheckSOL () {
+grep "^$1" -q "$2" && BTKsuccess "$1 CORRECTLY found in $2" || BTKerror "$1 NOT found in $2"
+}
+BTKsedCheckReverse () {
+grep "$1" -q "$2" && BTKerror "$1 INCORRECTLY found in $2" || BTKsuccess "$1 correctly not found in $2"
+}
+BTKshowFile(){
+echo -e "\n*** Showing File contents $1 ***\n"
+echo -e "$( cat $1 )"
+echo -e "\n*** End showing file contents ***\n"
+}
+BTKmakeCron(){
+crontab -l -u root | grep -F -i -v "$1" | { cat; echo "$2"; } | crontab -
+}
+BTKjumpTo(){
+label=$1
+cmd=$(sed -n "/$label:/{:a;n;p;ba};" $0 | grep -v ':$')
+eval "$cmd"
+exit
+}
+
+BTKinstall(){
+declare -n install_ref=$1
+declare installed='Status: install ok installed'
+declare installThese
+apt update
+for i in "${install_ref[@]}"; do
+  [[ $( dpkg -s $i | grep Status ) != $installed ]] && installThese+=" $i" || echo "$i Already installed"
+done
+echo -e "Installing the following software...\n${installThese}\n"
+DEBIAN_FRONTEND=noninteractive apt install -y${installThese}
+for i in "${install_ref[@]}"; do
+  [[ $( dpkg -s $i | grep Status ) == $installed ]] && BTKsuccess "$i installed" || BTKerror "$i NOT installed"
+done
+}
+BTKenable(){
+systemctl enable --now $1
+status1=$( systemctl is-enabled $1 )
+status2=$( systemctl is-active $1 )
+BTKinfo "$1 is ${status1} and ${status2}"
+}
+BTKaddRestart(){
+if [ ! -d /etc/systemd/system/${1}.service.d ]; then
+  mkdir /etc/systemd/system/${1}.service.d
+  BTKcmdchk "mkdir ${1}.service.d"
+fi
+if [[ -d /etc/systemd/system/${1}.service.d && ! -L /etc/systemd/system/${1}.service.d ]] ; then
+  if [ ! -f /etc/systemd/system/${1}.service.d/acorn.conf ]; then
+    echo -e "[Service]\nRestart=on-failure\nRestartSec=30s" > /etc/systemd/system/${1}.service.d/acorn.conf
+    echo -e "${btkGre}restart file added successfully${btkRes}"
+    BTKshowFile /etc/systemd/system/${1}.service.d/acorn.conf
+  else
+    echo -e "${btkYel}**WARNING** /etc/systemd/system/${1}.service.d/acorn.conf already exists${btkRes}"
+  fi
+fi
+}
+BTKgetStatus(){
+BTKinfo "${1} is $( systemctl is-active ${1} )"
+}
+
+BTKmakePassword(){
+  declare format=${1:-"Aa1"}
+  declare length=${2:-20}
+  declare chars=''
+  declare upper='A-HJ-NP-Z'
+  declare lower='a-km-z'
+  declare numbers='2-9'
+  declare symbols='@+=$#&><'
+  [[ "$format" != "${format/A/}" ]] && chars=${upper}
+  [[ "$format" != "${format/a/}" ]] && chars="${chars}${lower}"
+  [[ "$format" != "${format/1/}" ]] && chars="${chars}${numbers}"
+  [[ "$format" != "${format/@/}" ]] && chars="${chars}${symbols}"
+  password=$(< /dev/urandom tr -dc ${chars} | head -c${length})
+  echo $password
+}
+
+# used for reading a heredoc into var ie BTKdefine VAR <<'EOF'
+BTKdefine(){ IFS='\n' read -r -d '' ${1} || true; }
+
+# start bashMS
+
+declare -ag bmsOptions
+
+BMSsimple(){
+  declare gotit='n'
+  until [[ $gotit == 'y' ]]; do
+    clear
+    BMSmake "$1" "$2"
+    read -n 1 -s answer
+    [[ $answer -lt ${#bmsOptions[@]} ]] && [[ $answer != '' ]] && gotit='y'
+  done
+  bmsAnswer="${bmsOptions[$answer]}"
+  echo -e "${btkRev}You have chosen $bmsAnswer.${btkRes}\n"
+}
+
+BMSmake(){
+  declare heading=${1:-"Menu Heading"}
+  declare prompt=${2:-"Type a number or press enter key to quit."}
+  echo -e "${btkPur} Bash Menu System${btkRes}"
+  echo -e "${btkCya} ${heading}${btkRes}"
+  for i in "${!bmsOptions[@]}"; do
+  echo -e "${btkRev} ["$i"] - ${bmsOptions[$i]}${btkRes}"
+  done
+  echo -e "${btkCya} ${prompt}${btkRes}"
+  echo -e "${btkPur} ${btkRes}"
+}
+
+# end bashMS
+# start bashDB
+
+BDBconnect(){
+  set -u
+  declare -g bdbFile=${1}
+  [[ ! -f "${bdbFile}" ]] && { mkdir -p "$(dirname "${bdbFile}")"; touch "${bdbFile}"; }
+  [[ -f "${bdbFile}" ]] && BTKsuccess "DB File ${bdbFile} created or exists." || BTKerror "DB File ${bdbFile} does not exist."
+}
+BDBinsert(){
+  if grep -q "${1}=" "${bdbFile}"; then
+  	BTKerror "The file ${bdbFile} already contains ${1}, use update rather than insert."
+  else
+    local entry="${1}=${2}"
+  	echo "${entry}" >> "${bdbFile}"
+  	grep -q "${1}=" "$bdbFile" && BTKsuccess "Entry $entry correctly inserted into ${bdbFile}." || BTKerror "Entry $entry FAILED to insert into ${bdbFile}."
+  fi
+}
+BDBdelete(){
+  set -u
+  sed -i /${1}=/d "${bdbFile}"
+  grep -q "${1}=" "${bdbFile}" && BTKerror "Entry for ${1} FAILED to erase." || BTKsuccess "Entry for ${1} correctly erased."
+}
+BDBupdate(){
+  BDBdelete "${1}"
+  BDBinsert "${1}" "${2}"
+}
+BDBdrop(){
+  set -u
+  rm -rf "${bdbFile}"
+  [[ ! -f "${bdbFile}" ]] && BTKsuccess "DB File ${bdbFile} correctly erased" || BTKwarn "DB File ${bdbFile} FAILED to erase."
+}
+BDBselectAll(){
+  set -u
+  while IFS= read -r line; do
+    local index=$( awk -F'=' '{print $1}' <<< "$line" )
+    declare -g${1} $index
+    eval $( grep "${index}=" "${bdbFile}" )
+  done < "${bdbFile}"
+}
+BDBselectRow(){
+  set -u
+  declare -g${2} ${1}
+  eval $( grep "${1}=" "${bdbFile}" )
+}
+BDBclean(){
+  set -u
+  sed '/^$/d' ${bdbFile}
+  grep -c "^$" "${bdbFile}" && BTKwarn "Empty lines FAILED to be removed" || BTKsuccess "All empty lines removed from ${bdbFile}"
+}
+
+# end bashDB
+
