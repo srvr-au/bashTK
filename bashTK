@@ -29,11 +29,19 @@ BTKpause(){
   echo "Continuing..."
 }
 BTKask(){
+  echo -e "${btkCya} ${1}${btkRes}"
+  echo -e "${btkCya} Enter y for yes, n for no, any other key to abort...${btkRes}"
+  read -n 1 -s btkYN
+  [[ "$btkYN" != [yn] ]] && { echo -e "${btkRed}Exiting as per your request... ${btkRes}"; exit 1; }
+  echo -e "\n"
+}
+BTKaskConfirm(){
   declare confirm='n'
   until [[ $confirm == 'y' ]]; do
     echo -e "${btkCya} ${1}${btkRes}"
     read btkAnswer
-    echo -e "${btkRev} Your answer was $btkAnswer, is this correct? (y/n)... ${btkRes}"
+    [[ $btkAnswer == '' ]] && btkAnswerEng='*No Input*' || btkAnswerEng=$btkAnswer
+    echo -e "${btkRev} Your answer was $btkAnswerEng, is this correct? (y/n)... ${btkRes}"
     read -n 1 -s confirm
   done
   echo -e "\n"
