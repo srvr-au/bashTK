@@ -1,7 +1,7 @@
 ##########################
 # Name: bashTK (Bash ToolKit) including bashMS (Bash Menu System) and bashDB (Bash DataBase)
 # Version: 0.11
-# Info: https://github.com/acorncss/bashTK
+# Info: https://github.com/srvr-au/bashTK
 # Donate: https://www.paypal.com/donate?hosted_button_id=P8USAAG7U2T28
 ##########################
 
@@ -20,7 +20,7 @@ declare -rg btkReturn='\n\e[K'
 BTKcontinue(){
   echo -e "${btkYel} Abort (any key) or Continue (y) ? ${btkRes}\n"
   read -n 1 -s reply
-  [[ $reply != 'y' ]] && { echo -e "EXIT as per your request"; exit 1; } || echo -e "Continuing..."
+  [[ $reply != 'y' ]] && { echo -e "EXIT as per your request"; exit 1; } || clear; echo "Continuing..."
 }
 BTKpause(){
   echo -e "${btkBlu} Check above lines. Press any key to Clear & Continue.${btkRes}"
@@ -99,7 +99,7 @@ crontab -l -u root | grep -F -i -v "$1" | { cat; echo "$2"; } | crontab -
 }
 BTKjumpTo(){
 label=$1
-cmd=$(sed -n "/$label:/{:a;n;p;ba};" $0 | grep -v ':$')
+cmd=$( sed -n "/$label:/{:a;n;p;ba};" $0 | grep -v ':$' )
 eval "$cmd"
 exit
 }
