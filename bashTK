@@ -105,7 +105,7 @@ exit
 }
 
 BTKinstall(){
-declare -a install_ref=$1
+declare -a install_ref=("$@")
 declare installed='Status: install ok installed'
 declare -g installThese
 apt update
