@@ -105,16 +105,16 @@ exit
 }
 
 BTKinstall(){
-declare -n install_ref=$1
+declare -a install_ref=$1
 declare installed='Status: install ok installed'
-declare installThese
+declare -g installThese
 apt update
-for i in "${install_ref[@]}"; do
+for i in ${install_ref[@]}; do
   [[ $( dpkg -s $i | grep Status ) != $installed ]] && installThese+=" $i" || echo "$i Already installed"
 done
 echo -e "Installing the following software...\n${installThese}\n"
 DEBIAN_FRONTEND=noninteractive apt install -y${installThese}
-for i in "${install_ref[@]}"; do
+for i in ${install_ref[@]}; do
   [[ $( dpkg -s $i | grep Status ) == $installed ]] && BTKsuccess "$i installed" || BTKerror "$i NOT installed"
 done
 }
