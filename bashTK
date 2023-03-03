@@ -112,10 +112,15 @@ declare -a installAsk=("$@")
 declare -a installTry
 declare -ga installOK
 apt update
+echo "Attempting to install:"
 for i in ${installAsk[@]}; do
-  BTKisInstalled "$i" && echo "$i Already installed." || installTry+=("$i")
+  if BTKisInstalled "$i"; then
+    echo "$i Already installed."
+  else
+    installTry+=("$i")
+    echo "$i"
 done
-BTKinfo "Installing the following software...\n${installTry[@]}\n"
+BTKinfo "Installing the following software...${installTry[@]}"
 BTKpause
 DEBIAN_FRONTEND=noninteractive apt install -y "${installTry[@]}"
 for i in ${installTry[@]}; do
