@@ -43,7 +43,7 @@ BTKheader(){
 }
 BTKpause(){
   echo -e "${btkBlu} Check above lines. Press 'a' to Abort or any key to Clear & Continue.${btkRes}"
-  read -n 1 -s
+  read -n 1 -s reply
   [[ $reply == 'a' ]] && BTKexit
   clear
   echo "Continuing..."
@@ -113,14 +113,14 @@ declare -a installTry
 declare -ga installOK
 apt update
 for i in ${installAsk[@]}; do
-BTKisInstalled "$i" && echo "$i Already installed." || installTry+=('$i')
+  BTKisInstalled "$i" && echo "$i Already installed." || installTry+=("$i")
 done
 BTKinfo "Installing the following software...\n${installTry[@]}\n"
 BTKpause
 DEBIAN_FRONTEND=noninteractive apt install -y "${installTry[@]}"
 for i in ${installTry[@]}; do
   if BTKisInstalled "$i"; then
-    installOK+=('$i')
+    installOK+=("$i")
     BTKsuccess "$i installed"
   else
     BTKerror "$i NOT installed"
