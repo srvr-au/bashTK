@@ -1,6 +1,6 @@
 ##########################
 # Name: bashTK (Bash ToolKit) including bashMS (Bash Menu System) and bashDB (Bash DataBase)
-# Version: 0.11
+# Version: 0.12
 # Info: https://github.com/srvr-au/bashTK
 # Donate: https://www.paypal.com/donate?hosted_button_id=P8USAAG7U2T28
 ##########################
@@ -17,14 +17,34 @@ declare -rg btkRes='\e[0m'
 declare -rg btkRev='\e[1;7m\e[K'
 declare -rg btkReturn='\n\e[K'
 
-BTKcontinue(){
-  echo -e "${btkYel} Abort (any key) or Continue (y) ? ${btkRes}\n"
-  read -n 1 -s reply
-  [[ $reply != 'y' ]] && { echo -e "EXIT as per your request"; exit 1; } || clear; echo "Continuing..."
+BTKerror(){
+  echo -e "${btkRed} ERROR${btkRes}\n${btkRev} ${1}${btkRes}\n${btkRed} ${btkRes}\n"
+  BTKpause
+}
+BTKfatalError(){
+  echo -e "${btkRed} FATAL ERROR${btkRes}\n${btkRev} ${1}${btkRes}\n${btkRed} ${btkRes}\n"
+  exit 1
+}
+BTKwarn(){
+  echo -e "${btkYel} WARNING${btkRes}\n${btkRev} ${1}${btkRes}\n${btkYel} ${btkRes}\n"
+}
+BTKsuccess(){
+  echo -e "${btkGre} SUCCESS${btkRes}\n${btkRev} ${1}${btkRes}\n${btkGre} ${btkRes}\n"
+}
+BTKinfo(){
+  echo -e "${btkBlu} INFORMATION${btkRes}\n${btkRev} ${1}${btkRes}\n${btkBlu} ${btkRes}\n"
+}
+BTKexit(){
+  echo -e "${btkYel} EXIT REQUEST${btkRes}\n${btkRev} Exit as per your request.${btkRes}\n${btkYel} ${btkRes}\n"
+  exit 1
+}
+BTKheader(){
+  echo -e "${btkPur} ${1}${btkRes}\n${btkPur}====================${btkRes}\n"
 }
 BTKpause(){
-  echo -e "${btkBlu} Check above lines. Press any key to Clear & Continue.${btkRes}"
+  echo -e "${btkBlu} Check above lines. Press 'a' to Abort or any key to Clear & Continue.${btkRes}"
   read -n 1 -s
+  [[ $reply == 'a' ]] && BTKexit
   clear
   echo "Continuing..."
 }
@@ -32,7 +52,7 @@ BTKask(){
   echo -e "${btkCya} ${1}${btkRes}"
   echo -e "${btkCya} Enter y for yes, n for no, any other key to abort...${btkRes}"
   read -n 1 -s btkYN
-  [[ "$btkYN" != [yn] ]] && { echo -e "${btkRed}Exiting as per your request... ${btkRes}"; exit 1; }
+  [[ "$btkYN" != [yn] ]] && BTKexit
   echo -e "\n"
 }
 BTKaskConfirm(){
@@ -45,26 +65,6 @@ BTKaskConfirm(){
     read -n 1 -s confirm
   done
   echo -e "\n"
-}
-BTKerror(){
-  echo -e "${btkRed} ERROR${btkRes}\n${btkRev} ${1}${btkRes}\n${btkRed} ${btkRes}\n"
-  BTKcontinue
-}
-BTKfatalError(){
-  echo -e "${btkRed} ERROR${btkRes}\n${btkRev} ${1}${btkRes}\n${btkRed} ${btkRes}\n"
-  exit 1
-}
-BTKwarn(){
-  echo -e "${btkYel} WARNING${btkRes}\n${btkRev} ${1}${btkRes}\n${btkYel} ${btkRes}\n"
-}
-BTKsuccess(){
-  echo -e "${btkGre} SUCCESS${btkRes}\n${btkRev} ${1}${btkRes}\n${btkGre} ${btkRes}\n"
-}
-BTKinfo(){
-  echo -e "${btkBlu} INFORMATION${btkRes}\n${btkRev} ${1}${btkRes}\n${btkBlu} ${btkRes}\n"
-}
-BTKheader(){
-  echo -e "${btkPur} ${1}${btkRes}\n${btkPur}====================${btkRes}\n"
 }
 BTKrun(){
   "$@"
@@ -80,19 +80,19 @@ BTKbackupOrigConfig(){
 BTKfileExists(){
   [[ -f "$1" ]] && BTKsuccess "$1 exists." || BTKerror "$1 does NOT exist."
 }
-BTKsedCheck(){
+BTKgrepCheck(){
   grep "$1" -q "$2" && BTKsuccess "$1 CORRECTLY found in $2" || BTKerror "$1 NOT found in $2"
 }
-BTKsedCheckSOL () {
+BTKgrepCheckSOL () {
 grep "^$1" -q "$2" && BTKsuccess "$1 CORRECTLY found in $2" || BTKerror "$1 NOT found in $2"
 }
-BTKsedCheckReverse () {
+BTKgrepCheckReverse () {
 grep "$1" -q "$2" && BTKerror "$1 INCORRECTLY found in $2" || BTKsuccess "$1 correctly not found in $2"
 }
 BTKshowFile(){
-echo -e "\n*** Showing File contents $1 ***\n"
+echo -e "\n${btkBlu}*** Showing File contents $1 ***${btkRes}\n"
 echo -e "$( cat $1 )"
-echo -e "\n*** End showing file contents ***\n"
+echo -e "\n${btkBlu}*** End showing file contents ***${btkRes}\n"
 }
 BTKmakeCron(){
 crontab -l -u root | grep -F -i -v "$1" | { cat; echo "$2"; } | crontab -
@@ -103,19 +103,28 @@ cmd=$( sed -n "/$label:/{:a;n;p;ba};" $0 | grep -v ':$' )
 eval "$cmd"
 exit
 }
-
-BTKinstall(){
-declare -a install_ref=("$@")
+BTKisInstalled(){
 declare installed='Status: install ok installed'
-declare -g installThese
+[[ $( dpkg -s $1 | grep Status ) == $installed ]] && true || false
+}
+BTKinstall(){
+declare -a installAsk=("$@")
+declare -a installTry
+declare -ga installOK
 apt update
-for i in ${install_ref[@]}; do
-  [[ $( dpkg -s $i | grep Status ) != $installed ]] && installThese+=" $i" || echo "$i Already installed"
+for i in ${installAsk[@]}; do
+BTKisInstalled "$i" && echo "$i Already installed." || installTry+=('$i')
 done
-echo -e "Installing the following software...\n${installThese}\n"
-DEBIAN_FRONTEND=noninteractive apt install -y${installThese}
-for i in ${install_ref[@]}; do
-  [[ $( dpkg -s $i | grep Status ) == $installed ]] && BTKsuccess "$i installed" || BTKerror "$i NOT installed"
+BTKinfo "Installing the following software...\n${installTry[@]}\n"
+BTKpause
+DEBIAN_FRONTEND=noninteractive apt install -y "${installTry[@]}"
+for i in ${installTry[@]}; do
+  if BTKisInstalled "$i"; then
+    installOK+=('$i')
+    BTKsuccess "$i installed"
+  else
+    BTKerror "$i NOT installed"
+  fi
 done
 }
 BTKenable(){
@@ -130,12 +139,12 @@ if [ ! -d /etc/systemd/system/${1}.service.d ]; then
   BTKcmdchk "mkdir ${1}.service.d"
 fi
 if [[ -d /etc/systemd/system/${1}.service.d && ! -L /etc/systemd/system/${1}.service.d ]] ; then
-  if [ ! -f /etc/systemd/system/${1}.service.d/acorn.conf ]; then
-    echo -e "[Service]\nRestart=on-failure\nRestartSec=30s" > /etc/systemd/system/${1}.service.d/acorn.conf
+  if [ ! -f /etc/systemd/system/${1}.service.d/srvr.conf ]; then
+    echo -e "[Service]\nRestart=on-failure\nRestartSec=30s" > /etc/systemd/system/${1}.service.d/srvr.conf
     echo -e "${btkGre}restart file added successfully${btkRes}"
-    BTKshowFile /etc/systemd/system/${1}.service.d/acorn.conf
+    BTKshowFile /etc/systemd/system/${1}.service.d/srvr.conf
   else
-    echo -e "${btkYel}**WARNING** /etc/systemd/system/${1}.service.d/acorn.conf already exists${btkRes}"
+    echo -e "${btkYel}**WARNING** /etc/systemd/system/${1}.service.d/srvr.conf already exists${btkRes}"
   fi
 fi
 }
