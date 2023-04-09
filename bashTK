@@ -5,44 +5,51 @@
 # Donate: https://www.paypal.com/donate?hosted_button_id=P8USAAG7U2T28
 ##########################
 
-declare -rg btkHost=$(hostname)
-declare -rg btkIp=$(hostname -i)
+declare -rg btkHost=$( hostname )
+declare -rg btkIp=$( hostname -i )
+
 declare -rg btkRed='\e[1;37;41m\e[K'
 declare -rg btkGre='\e[1;37;42m\e[K'
 declare -rg btkYel='\e[1;37;43m\e[K'
 declare -rg btkBlu='\e[1;37;44m\e[K'
 declare -rg btkPur='\e[1;37;45m\e[K'
 declare -rg btkCya='\e[1;37;46m\e[K'
+declare -rg btkLtRed='\e[1;37;101m\e[K'
+declare -rg btkLtGre='\e[1;37;102m\e[K'
+declare -rg btkLtYel='\e[1;37;103m\e[K'
+declare -rg btkLtBlu='\e[1;37;104m\e[K'
+declare -rg btkLtPur='\e[1;37;105m\e[K'
+declare -rg btkLtCya='\e[1;37;106m\e[K'
 declare -rg btkRes='\e[0m'
 declare -rg btkRev='\e[1;7m\e[K'
 declare -rg btkReturn='\n\e[K'
 
 BTKerror(){
-  echo -e "${btkRed} ERROR${btkRes}\n${btkRev} ${1}${btkRes}\n${btkRed} ${btkRes}\n"
+  echo -e "${btkRed} ERROR: ${1}${btkRes}"
   BTKpause
 }
 BTKfatalError(){
-  echo -e "${btkRed} FATAL ERROR${btkRes}\n${btkRev} ${1}${btkRes}\n${btkRed} ${btkRes}\n"
+  echo -e "${btkRed} FATAL ERROR: ${1}${btkRes}\n"
   exit 1
 }
 BTKwarn(){
-  echo -e "${btkYel} WARNING${btkRes}\n${btkRev} ${1}${btkRes}\n${btkYel} ${btkRes}\n"
+  echo -e "${btkYel} WARNING: ${1}${btkRes}\n"
 }
 BTKsuccess(){
-  echo -e "${btkGre} SUCCESS${btkRes}\n${btkRev} ${1}${btkRes}\n${btkGre} ${btkRes}\n"
+  echo -e "${btkGre} SUCCESS: ${1}${btkRes}\n"
 }
 BTKinfo(){
-  echo -e "${btkBlu} INFORMATION${btkRes}\n${btkRev} ${1}${btkRes}\n${btkBlu} ${btkRes}\n"
+  echo -e "${btkBlu} INFORMATION${btkRes}\n${btkLtBlu} ${1}${btkRes}\n${btkBlu} ${btkRes}\n"
 }
 BTKexit(){
-  echo -e "${btkYel} EXIT REQUEST${btkRes}\n${btkRev} Exit as per your request.${btkRes}\n${btkYel} ${btkRes}\n"
+  echo -e "${btkYel} EXIT REQUEST: Exit as per your request...${btkRes}\n"
   exit 1
 }
 BTKheader(){
-  echo -e "${btkPur} ${1}${btkRes}\n${btkPur}====================${btkRes}\n"
+  echo -e "${btkLtPur} ${1}${btkRes}\n${btkPur} ${btkRes}\n"
 }
 BTKpause(){
-  echo -e "${btkBlu} Check above lines. Press 'a' to Abort or any key to Clear & Continue.${btkRes}"
+  echo -e "${btkLtBlu} Check above lines. Press 'a' to Abort or any key to Clear & Continue.${btkRes}"
   read -n 1 -s reply
   [[ $reply == 'a' ]] && BTKexit
   clear
@@ -68,7 +75,7 @@ BTKaskConfirm(){
 }
 BTKrun(){
   "$@"
-  [[ $? -eq 0 ]] && BTKsuccess "Command Succeeded (${@})." || { echo >&2 -e "${btkRed}Command Failed (${@}). Exiting...${btkRes}"; exit 1;}
+  [[ $? -eq 0 ]] && BTKsuccess "Command Succeeded (${@})." || { echo >&2 -e "${btkRed}Command Failed (${@}). Exiting...${btkRes}"; exit 1; }
 }
 BTKcmdCheck(){
   [[ $? -eq 0 ]] && BTKsuccess "Command Succeeded (${1})." || BTKerror "Command Failed (${1})."
@@ -84,14 +91,14 @@ BTKgrepCheck(){
   grep "$1" -q "$2" && BTKsuccess "$1 CORRECTLY found in $2" || BTKerror "$1 NOT found in $2"
 }
 BTKgrepCheckSOL () {
-grep "^$1" -q "$2" && BTKsuccess "$1 CORRECTLY found in $2" || BTKerror "$1 NOT found in $2"
+  grep "^$1" -q "$2" && BTKsuccess "$1 CORRECTLY found in $2" || BTKerror "$1 NOT found in $2"
 }
 BTKgrepCheckReverse () {
 grep "$1" -q "$2" && BTKerror "$1 INCORRECTLY found in $2" || BTKsuccess "$1 correctly not found in $2"
 }
 BTKshowFile(){
 echo -e "\n${btkBlu}*** Showing File contents $1 ***${btkRes}\n"
-echo -e "$( cat $1 )"
+echo -e "${btkLtBlu}$( cat $1 )${btkRes}"
 echo -e "\n${btkBlu}*** End showing file contents ***${btkRes}\n"
 }
 BTKmakeCron(){
@@ -137,15 +144,15 @@ BTKinfo "$1 is ${status1} and ${status2}"
 BTKaddRestart(){
 if [ ! -d /etc/systemd/system/${1}.service.d ]; then
   mkdir /etc/systemd/system/${1}.service.d
-  BTKcmdchk "mkdir ${1}.service.d"
+  BTKcmdCheck "mkdir ${1}.service.d"
 fi
 if [[ -d /etc/systemd/system/${1}.service.d && ! -L /etc/systemd/system/${1}.service.d ]] ; then
   if [ ! -f /etc/systemd/system/${1}.service.d/srvr.conf ]; then
     echo -e "[Service]\nRestart=on-failure\nRestartSec=30s" > /etc/systemd/system/${1}.service.d/srvr.conf
-    echo -e "${btkGre}restart file added successfully${btkRes}"
-    BTKshowFile /etc/systemd/system/${1}.service.d/srvr.conf
+    BTKsuccess 'Restart file added successfully.'
+    BTKshowFile "/etc/systemd/system/${1}.service.d/srvr.conf"
   else
-    echo -e "${btkYel}**WARNING** /etc/systemd/system/${1}.service.d/srvr.conf already exists${btkRes}"
+    BTKwarn "/etc/systemd/system/${1}.service.d/srvr.conf already exists."
   fi
 fi
 }
@@ -153,20 +160,25 @@ BTKgetStatus(){
 BTKinfo "${1} is $( systemctl is-active ${1} )"
 }
 
-BTKmakePassword(){
-  declare format=${1:-"Aa1"}
-  declare length=${2:-20}
-  declare chars=''
-  declare upper='A-HJ-NP-Z'
-  declare lower='a-km-z'
-  declare numbers='2-9'
-  declare symbols='@+=$#&><'
-  [[ "$format" != "${format/A/}" ]] && chars=${upper}
-  [[ "$format" != "${format/a/}" ]] && chars="${chars}${lower}"
-  [[ "$format" != "${format/1/}" ]] && chars="${chars}${numbers}"
-  [[ "$format" != "${format/@/}" ]] && chars="${chars}${symbols}"
-  password=$(< /dev/urandom tr -dc ${chars} | head -c${length})
-  echo $password
+BTKrandLetters(){
+  declare length=${1:-20}
+  declare chars='A-HJ-NP-Za-km-z'
+  echo $(< /dev/urandom tr -dc ${chars} | head -c${length})
+}
+BTKrandNumbers(){
+  declare length=${1:-10}
+  declare chars='0-9'
+  echo $(< /dev/urandom tr -dc ${chars} | head -c${length})
+}
+BTKrandAlpha(){
+  declare length=${1:-20}
+  declare chars='A-HJ-NP-Za-km-z2-9'
+  echo $(< /dev/urandom tr -dc ${chars} | head -c${length})
+}
+BTKrandAlpha+(){
+  declare length=${1:-20}
+  declare chars='A-HJ-NP-Za-km-z2-9@+=$#&><'
+  echo $(< /dev/urandom tr -dc ${chars} | head -c${length})
 }
 
 # used for reading a heredoc into var ie BTKdefine VAR <<'EOF'
@@ -206,7 +218,11 @@ BMSmake(){
 BDBconnect(){
   set -u
   declare -g bdbFile=${1}
-  [[ ! -f "${bdbFile}" ]] && { mkdir -p "$(dirname "${bdbFile}")"; touch "${bdbFile}"; }
+  if [[ ! -f "${bdbFile}" ]]; then
+    mkdir -p "$( dirname "${bdbFile}" )"
+    touch "${bdbFile}"
+    chmod 600 "${bdbFile}"
+  fi
   [[ -f "${bdbFile}" ]] && BTKsuccess "DB File ${bdbFile} created or exists." || BTKerror "DB File ${bdbFile} does not exist."
 }
 BDBinsert(){
