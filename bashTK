@@ -42,8 +42,9 @@ BTKinfo(){
   echo -e "${btkBlu} INFORMATION${btkRes}\n${btkLtBlu} ${1}${btkRes}\n${btkBlu} ${btkRes}\n"
 }
 BTKexit(){
-  echo -e "${btkYel} EXIT REQUEST: Exit as per your request...${btkRes}\n"
-  exit 1
+  local reason=${1:-Exiting as per your request.}
+  echo -e "\n${btkRed} ${reason}${btkRes}\n"
+  exit
 }
 BTKheader(){
   echo -e "${btkLtPur} ${1}${btkRes}\n${btkPur} ${btkRes}\n"
@@ -180,39 +181,71 @@ BTKrandAlpha+(){
   declare chars='A-HJ-NP-Za-km-z2-9@+=$#&><'
   echo $(< /dev/urandom tr -dc ${chars} | head -c${length})
 }
+BTKgetDate(){
+  startDate=$1 # in YYYY-mm-dd format
+  changeBy=$2 # in +1m format (+ or - number time as d,w,m,y)
+  local len=$((${#changeBy}-1))
+  local firstPart="${changeBy:0:$len}"
+  local letter="${changeBy:$len:1}"
+  case $letter in
+    d) local secondPart='days';;
+    w) local secondPart='weeks';;
+    m) local secondPart='months';;
+    y) local secondPart='years';;
+    *) echo 'Problem with second argument'; exit;;
+  esac
+  date --date="$( date +${startDate} ) $firstPart $secondPart" +%Y-%m-%d
+}
+BTKdaysBetween(){
+  firstDate=$( date --date="$1" +%s )
+  secondDate=$( date --date="$2" +%s )
+  seconds=$((secondDate-firstDate))
+  echo $((seconds/86400))
+}
 
-# used for reading a heredoc into var ie BTKdefine VAR <<'EOF'
+# used for reading a heredoc into var ie BTKdefine VAR <<'EOF' etc...
 BTKdefine(){ IFS='\n' read -r -d '' ${1} || true; }
 
-# start bashMS
-
-declare -ag bmsOptions
-
-BMSsimple(){
-  declare gotit='n'
-  until [[ $gotit == 'y' ]]; do
-    clear
-    BMSmake "$1" "$2"
-    read -n 1 -s answer
-    [[ $answer -lt ${#bmsOptions[@]} ]] && [[ $answer != '' ]] && gotit='y'
-  done
-  bmsAnswer="${bmsOptions[$answer]}"
-  echo -e "${btkRev}You have chosen $bmsAnswer.${btkRes}\n"
-}
-
-BMSmake(){
-  declare heading=${1:-"Menu Heading"}
-  declare prompt=${2:-"Type a number or press enter key to quit."}
-  echo -e "${btkPur} Bash Menu System${btkRes}"
+declare -ag btkMenuOptions
+BTKmenu(){
+  declare doConfirm=${1:-"y"}
+  declare heading=${2:-"Menu Heading"}
+  declare prompt=${3:-"Press a letter to choose: "}
+  while true; do
+clear
+echo -e "${btkPur} Bash Menu${btkRes}"
   echo -e "${btkCya} ${heading}${btkRes}"
-  for i in "${!bmsOptions[@]}"; do
-  echo -e "${btkRev} ["$i"] - ${bmsOptions[$i]}${btkRes}"
+  chars=( {a..p} {r..w} {y..z} )
+  menuChars=()
+  for i in "${!btkMenuOptions[@]}"; do
+    echo -e "${btkRev} ["${chars[i]}"] - ${btkMenuOptions[$i]}${btkRes}"
+    menuChars+=("${chars[i]}")
   done
+menuChars+=('q' 'x')
+echo -e "${btkRev} [q] - Quit this Menu${btkRes}"
+echo -e "${btkRev} [x] - Exit this Script${btkRes}"
   echo -e "${btkCya} ${prompt}${btkRes}"
   echo -e "${btkPur} ${btkRes}"
+read -n1 -s menuAnswer
+local count=0
+for i in "${menuChars[@]}"; do
+    if [ "$i" == "${menuAnswer}" ] ; then
+      [[ "$i" == 'x' ]] && BTKexit
+      [[ "$i" == 'q' ]] && return
+      if [[ $doConfirm == 'y' ]]; then
+        echo -e "${btkGre} You chose ${btkRes} ${btkMenuOptions[$count]} ${btkGre}, is this correct (y or
+ n)${btkRes}"
+        read -n1 -s confirm
+        [[ $confirm == 'y' ]] && return
+      else
+        return
+      fi
+    fi
+((count++))
+done
+done
 }
 
-# end bashMS
 # start bashDB
 
 BDBconnect(){
@@ -258,7 +291,7 @@ BDBselectAll(){
 }
 BDBselectRow(){
   set -u
-  declare -g${2} ${1}
+  declare -g ${2} ${1}
   eval $( grep "${1}=" "${bdbFile}" )
 }
 BDBclean(){
