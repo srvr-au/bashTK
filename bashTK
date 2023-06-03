@@ -14,12 +14,12 @@ declare -rg btkYel='\e[1;37;43m\e[K'
 declare -rg btkBlu='\e[1;37;44m\e[K'
 declare -rg btkPur='\e[1;37;45m\e[K'
 declare -rg btkCya='\e[1;37;46m\e[K'
-declare -rg btkLtRed='\e[1;37;101m\e[K'
-declare -rg btkLtGre='\e[1;37;102m\e[K'
-declare -rg btkLtYel='\e[1;37;103m\e[K'
-declare -rg btkLtBlu='\e[1;37;104m\e[K'
-declare -rg btkLtPur='\e[1;37;105m\e[K'
-declare -rg btkLtCya='\e[1;37;106m\e[K'
+declare -rg btkLtRed='\e[1;30;101m\e[K'
+declare -rg btkLtGre='\e[1;30;102m\e[K'
+declare -rg btkLtYel='\e[1;30;103m\e[K'
+declare -rg btkLtBlu='\e[1;30;104m\e[K'
+declare -rg btkLtPur='\e[1;30;105m\e[K'
+declare -rg btkLtCya='\e[1;30;106m\e[K'
 declare -rg btkRes='\e[0m'
 declare -rg btkRev='\e[1;7m\e[K'
 declare -rg btkReturn='\n\e[K'
@@ -64,7 +64,7 @@ BTKask(){
   echo -e "\n"
 }
 BTKaskConfirm(){
-  declare confirm='n'
+  local confirm='n'
   until [[ $confirm == 'y' ]]; do
     echo -e "${btkCya} ${1}${btkRes}"
     read btkAnswer
@@ -106,20 +106,20 @@ BTKmakeCron(){
 crontab -l -u root | grep -F -i -v "$1" | { cat; echo "$2"; } | crontab -
 }
 BTKjumpTo(){
-label=$1
-cmd=$( sed -n "/$label:/{:a;n;p;ba};" $0 | grep -v ':$' )
+local label=$1
+local cmd=$( sed -n "/$label:/{:a;n;p;ba};" $0 | grep -v ':$' )
 eval "$cmd"
 exit
 }
 BTKisInstalled(){
-declare installed='Status: install ok installed'
-[[ $( dpkg -s $1 | grep Status ) == $installed ]] && true || false
+  dpkg --verify "$1" 2>/dev/null
 }
 BTKinstall(){
-declare -a installAsk=("$@")
-declare -a installTry
-declare -ga installOK
-apt update
+local -a installAsk=("$@")
+local -a installTry
+local -ga installOK
+echo 'Updating Package Database...'
+apt update &>/dev/null
 echo "Attempting to install:"
 for i in ${installAsk[@]}; do
   BTKisInstalled "$i" && echo "$i Already installed." || installTry+=("$i")
@@ -138,8 +138,8 @@ done
 }
 BTKenable(){
 systemctl enable --now $1
-status1=$( systemctl is-enabled $1 )
-status2=$( systemctl is-active $1 )
+local status1=$( systemctl is-enabled $1 )
+local status2=$( systemctl is-active $1 )
 BTKinfo "$1 is ${status1} and ${status2}"
 }
 BTKaddRestart(){
@@ -162,28 +162,28 @@ BTKinfo "${1} is $( systemctl is-active ${1} )"
 }
 
 BTKrandLetters(){
-  declare length=${1:-20}
-  declare chars='A-HJ-NP-Za-km-z'
+  local length=${1:-20}
+  local chars='A-HJ-NP-Za-km-z'
   echo $(< /dev/urandom tr -dc ${chars} | head -c${length})
 }
 BTKrandNumbers(){
-  declare length=${1:-10}
-  declare chars='0-9'
+  local length=${1:-10}
+  local chars='0-9'
   echo $(< /dev/urandom tr -dc ${chars} | head -c${length})
 }
 BTKrandAlpha(){
-  declare length=${1:-20}
-  declare chars='A-HJ-NP-Za-km-z2-9'
+  local length=${1:-20}
+  local chars='A-HJ-NP-Za-km-z2-9'
   echo $(< /dev/urandom tr -dc ${chars} | head -c${length})
 }
 BTKrandAlpha+(){
-  declare length=${1:-20}
-  declare chars='A-HJ-NP-Za-km-z2-9@+=$#&><'
+  local length=${1:-20}
+  local chars='A-HJ-NP-Za-km-z2-9@+=$#&><'
   echo $(< /dev/urandom tr -dc ${chars} | head -c${length})
 }
 BTKgetDate(){
-  startDate=$1 # in YYYY-mm-dd format
-  changeBy=$2 # in +1m format (+ or - number time as d,w,m,y)
+  local startDate=$1 # in YYYY-mm-dd format
+  local changeBy=$2 # in +1m format (+ or - number time as d,w,m,y)
   local len=$((${#changeBy}-1))
   local firstPart="${changeBy:0:$len}"
   local letter="${changeBy:$len:1}"
@@ -197,9 +197,9 @@ BTKgetDate(){
   date --date="$( date +${startDate} ) $firstPart $secondPart" +%Y-%m-%d
 }
 BTKdaysBetween(){
-  firstDate=$( date --date="$1" +%s )
-  secondDate=$( date --date="$2" +%s )
-  seconds=$((secondDate-firstDate))
+  local firstDate=$( date --date="$1" +%s )
+  local secondDate=$( date --date="$2" +%s )
+  local seconds=$((secondDate-firstDate))
   echo $((seconds/86400))
 }
 
@@ -208,15 +208,15 @@ BTKdefine(){ IFS='\n' read -r -d '' ${1} || true; }
 
 declare -ag btkMenuOptions
 BTKmenu(){
-  declare doConfirm=${1:-"y"}
-  declare heading=${2:-"Menu Heading"}
-  declare prompt=${3:-"Press a letter to choose: "}
+  local doConfirm=${1:-"y"}
+  local heading=${2:-"Menu Heading"}
+  local prompt=${3:-"Press a letter to choose: "}
   while true; do
 clear
 echo -e "${btkPur} Bash Menu${btkRes}"
   echo -e "${btkCya} ${heading}${btkRes}"
-  chars=( {a..p} {r..w} {y..z} )
-  menuChars=()
+  local chars=( {a..p} {r..w} {y..z} )
+  local menuChars=()
   for i in "${!btkMenuOptions[@]}"; do
     echo -e "${btkRev} ["${chars[i]}"] - ${btkMenuOptions[$i]}${btkRes}"
     menuChars+=("${chars[i]}")
@@ -226,15 +226,14 @@ echo -e "${btkRev} [q] - Quit this Menu${btkRes}"
 echo -e "${btkRev} [x] - Exit this Script${btkRes}"
   echo -e "${btkCya} ${prompt}${btkRes}"
   echo -e "${btkPur} ${btkRes}"
-read -n1 -s menuAnswer
+read -n1 -s btkMenuAnswer
 local count=0
 for i in "${menuChars[@]}"; do
-    if [ "$i" == "${menuAnswer}" ] ; then
+    if [ "$i" == "${btkMenuAnswer}" ] ; then
       [[ "$i" == 'x' ]] && BTKexit
       [[ "$i" == 'q' ]] && return
       if [[ $doConfirm == 'y' ]]; then
-        echo -e "${btkGre} You chose ${btkRes} ${btkMenuOptions[$count]} ${btkGre}, is this correct (y or
- n)${btkRes}"
+        echo -e "${btkLtGre} You chose ${btkRes} ${btkMenuOptions[$count]} ${btkLtGre}, is this correct (y or n)${btkRes}"
         read -n1 -s confirm
         [[ $confirm == 'y' ]] && return
       else
