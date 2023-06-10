@@ -14,51 +14,51 @@ declare -rg btkYel='\e[1;37;43m\e[K'
 declare -rg btkBlu='\e[1;37;44m\e[K'
 declare -rg btkPur='\e[1;37;45m\e[K'
 declare -rg btkCya='\e[1;37;46m\e[K'
-declare -rg btkLtRed='\e[1;37;101m\e[K'
-declare -rg btkLtGre='\e[1;37;102m\e[K'
-declare -rg btkLtYel='\e[1;37;103m\e[K'
-declare -rg btkLtBlu='\e[1;37;104m\e[K'
-declare -rg btkLtPur='\e[1;37;105m\e[K'
-declare -rg btkLtCya='\e[1;37;106m\e[K'
+declare -rg btkLtRed='\e[0;30;101m\e[K'
+declare -rg btkLtGre='\e[0;30;102m\e[K'
+declare -rg btkLtYel='\e[0;30;103m\e[K'
+declare -rg btkLtBlu='\e[0;30;104m\e[K'
+declare -rg btkLtPur='\e[0;30;105m\e[K'
+declare -rg btkLtCya='\e[0;30;106m\e[K'
 declare -rg btkRes='\e[0m'
 declare -rg btkRev='\e[1;7m\e[K'
 declare -rg btkReturn='\n\e[K'
 
 BTKerror(){
-  echo -e "${btkRed} ERROR: ${1}${btkRes}"
+  echo -e "${btkRed} ERROR: ${btkRes}${btkLtRed} ${1}${btkRes}"
   BTKpause
 }
 BTKfatalError(){
-  echo -e "${btkRed} FATAL ERROR: ${1}${btkRes}\n"
+  echo -e "${btkRed} FATAL ERROR: ${btkRes}${btkLtRed} ${1}${btkRes}\n"
   exit 1
 }
 BTKwarn(){
-  echo -e "${btkYel} WARNING: ${1}${btkRes}\n"
+  echo -e "${btkYel} WARNING: ${btkRes}${btkLtYel} ${1}${btkRes}\n"
 }
 BTKsuccess(){
-  echo -e "${btkGre} SUCCESS: ${1}${btkRes}\n"
+  echo -e "${btkGre} SUCCESS: ${btkRes}${btkLtGre} ${1}${btkRes}\n"
 }
 BTKinfo(){
-  echo -e "${btkBlu} INFORMATION${btkRes}\n${btkLtBlu} ${1}${btkRes}\n${btkBlu} ${btkRes}\n"
+  echo -e "${btkBlu} INFORMATION: ${btkRes}${btkLtBlu} ${1}${btkRes}\n"
 }
 BTKexit(){
   local reason=${1:-Exiting as per your request.}
   echo -e "\n${btkRed} ${reason}${btkRes}\n"
-  exit
+  exit 1
 }
 BTKheader(){
-  echo -e "${btkLtPur} ${1}${btkRes}\n${btkPur} ${btkRes}\n"
+  echo -e "${btkLtPur} ${1} ${btkRes}\n${btkPur} ${btkRes}\n"
 }
 BTKpause(){
-  echo -e "${btkLtBlu} Check above lines. Press 'a' to Abort or any key to Clear & Continue.${btkRes}"
+  echo -e "${btkRev} Check above lines. Press 'a' to Abort or any key to Clear & Continue. ${btkRes}"
   read -n 1 -s reply
   [[ $reply == 'a' ]] && BTKexit
   clear
-  echo "Continuing..."
+  echo -e "${btkPur} Continuing... ${btkRes}"
 }
 BTKask(){
   echo -e "${btkCya} ${1}${btkRes}"
-  echo -e "${btkCya} Enter y for yes, n for no, any other key to abort...${btkRes}"
+  echo -e "${btkRev} Enter y for yes, n for no, any other key to abort...${btkRes}"
   read -n 1 -s btkYN
   [[ "$btkYN" != [yn] ]] && BTKexit
   echo -e "\n"
@@ -118,13 +118,15 @@ BTKinstall(){
 local -a installAsk=("$@")
 local -a installTry
 local -ga installOK
-echo 'Updating Package Database...'
+BTKinfo 'Package Installation...'
+echo -e "${btkLtBlu} Updating Package Database... ${btkRes}"
 apt update &>/dev/null
-echo "Attempting to install:"
+echo -e "${btkLtBlu} Checking if already installed... ${btkRes}"
 for i in ${installAsk[@]}; do
-  BTKisInstalled "$i" && echo "$i Already installed." || installTry+=("$i")
+  BTKisInstalled "$i" && BTKerror "$i Already installed." || installTry+=("$i")
 done
-echo "Installing the following software...${installTry[@]}"
+BTKsuccess 'Checking complete...'
+echo -e "${btkLtBlu} Installing the following software...${installTry[@]} ${btkRes}"
 BTKpause
 DEBIAN_FRONTEND=noninteractive apt install -y "${installTry[@]}"
 for i in ${installTry[@]}; do
@@ -135,6 +137,7 @@ for i in ${installTry[@]}; do
     BTKerror "$i NOT installed"
   fi
 done
+BTKinfo 'Package installation complete.'
 }
 BTKenable(){
 systemctl enable --now $1
@@ -212,18 +215,17 @@ BTKmenu(){
   local heading=${2:-"Menu Heading"}
   local prompt=${3:-"Press a letter to choose: "}
   while true; do
-clear
-echo -e "${btkPur} Bash Menu${btkRes}"
-  echo -e "${btkCya} ${heading}${btkRes}"
+  clear
+  echo -e "${btkPur} ${heading}${btkRes}"
   local chars=( {a..p} {r..w} {y..z} )
   local menuChars=()
   for i in "${!btkMenuOptions[@]}"; do
-    echo -e "${btkRev} ["${chars[i]}"] - ${btkMenuOptions[$i]}${btkRes}"
+    echo -e "${btkLtpur} ["${chars[i]}"] - ${btkMenuOptions[$i]}${btkRes}"
     menuChars+=("${chars[i]}")
   done
 menuChars+=('q' 'x')
-echo -e "${btkRev} [q] - Quit this Menu${btkRes}"
-echo -e "${btkRev} [x] - Exit this Script${btkRes}"
+echo -e "${btkLtPur} [q] - Quit this Menu${btkRes}"
+echo -e "${btkLtPur} [x] - Exit this Script${btkRes}"
   echo -e "${btkCya} ${prompt}${btkRes}"
   echo -e "${btkPur} ${btkRes}"
 read -n1 -s btkMenuAnswer
@@ -233,7 +235,7 @@ for i in "${menuChars[@]}"; do
       [[ "$i" == 'x' ]] && BTKexit
       [[ "$i" == 'q' ]] && return
       if [[ $doConfirm == 'y' ]]; then
-        echo -e "${btkLtGre} You chose ${btkRes} ${btkMenuOptions[$count]} ${btkLtGre}, is this correct (y or n)${btkRes}"
+        echo -e "${btkGre} You chose ${btkRes}${btkLtGre} ${btkMenuOptions[$count]} ${btkRes}\n${btkRev} Is this correct (y or n)?${btkRes}"
         read -n1 -s confirm
         [[ $confirm == 'y' ]] && return
       else
