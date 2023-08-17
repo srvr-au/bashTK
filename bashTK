@@ -8,57 +8,57 @@
 declare -rg btkHost=$( hostname )
 declare -rg btkIp=$( hostname -i )
 
-declare -rg btkRed='\e[1;37;41m\e[K'
-declare -rg btkGre='\e[1;37;42m\e[K'
-declare -rg btkYel='\e[1;37;43m\e[K'
-declare -rg btkBlu='\e[1;37;44m\e[K'
-declare -rg btkPur='\e[1;37;45m\e[K'
-declare -rg btkCya='\e[1;37;46m\e[K'
-declare -rg btkLtRed='\e[0;30;101m\e[K'
-declare -rg btkLtGre='\e[0;30;102m\e[K'
-declare -rg btkLtYel='\e[0;30;103m\e[K'
-declare -rg btkLtBlu='\e[0;30;104m\e[K'
-declare -rg btkLtPur='\e[0;30;105m\e[K'
-declare -rg btkLtCya='\e[0;30;106m\e[K'
-declare -rg btkRes='\e[0m'
-declare -rg btkRev='\e[1;7m\e[K'
+declare -rg btkRedBg='\e[1;37;41m\e[K'
+declare -rg btkGreBg='\e[0;30;42m\e[K'
+declare -rg btkYelBg='\e[0;30;43m\e[K'
+declare -rg btkBluBg='\e[1;37;44m\e[K'
+declare -rg btkPurBg='\e[1;37;45m\e[K'
+declare -rg btkCyaBg='\e[0;30;46m\e[K'
+declare -rg btkRedFg='\e[1;31m'
+declare -rg btkGreFg='\e[1;32m'
+declare -rg btkYelFg='\e[1;33m'
+declare -rg btkBluFg='\e[1;34m'
+declare -rg btkPurFg='\e[1;35m'
+declare -rg btkCyaFg='\e[1;36m'
+declare -rg btkReset='\e[0m'
+declare -rg btkReverse='\e[1;7m\e[K'
 declare -rg btkReturn='\n\e[K'
 
 BTKerror(){
-  echo -e "${btkRed} ERROR: ${btkRes}${btkLtRed} ${1}${btkRes}"
+  echo -e "${btkRedBg} ERROR: ${1}${btkReset}"
   BTKpause
 }
 BTKfatalError(){
-  echo -e "${btkRed} FATAL ERROR: ${btkRes}${btkLtRed} ${1}${btkRes}\n"
+  echo -e "${btkRedFg} FATAL ERROR: ${1}${btkReset}\n"
   exit 1
 }
 BTKwarn(){
-  echo -e "${btkYel} WARNING: ${btkRes}${btkLtYel} ${1}${btkRes}\n"
+  echo -e "${btkYelBg} WARNING: ${1}${btkReset}\n"
 }
 BTKsuccess(){
-  echo -e "${btkGre} SUCCESS: ${btkRes}${btkLtGre} ${1}${btkRes}\n"
-}
-BTKinfo(){
-  echo -e "${btkBlu} INFORMATION: ${btkRes}${btkLtBlu} ${1}${btkRes}\n"
+  echo -e "${btkGreBg} SUCCESS: ${1}${btkReset}\n"
 }
 BTKexit(){
   local reason=${1:-Exiting as per your request.}
-  echo -e "\n${btkRed} ${reason}${btkRes}\n"
+  echo -e "\n${btkRedBg} ${reason}${btkReset}\n"
   exit 1
 }
 BTKheader(){
-  echo -e "${btkLtPur} ${1} ${btkRes}\n${btkPur} ${btkRes}\n"
+  echo -e "${btkBluBg} ${1}${btkReset}\n"
+}
+BTKinfo(){
+  echo -e "${btkBluFg}${1}${btkReset}\n"
 }
 BTKpause(){
-  echo -e "${btkRev} Check above lines. Press 'a' to Abort or any key to Clear & Continue. ${btkRes}"
+  echo -e "${btkCyaFg} Check above lines. Press 'a' to Abort or any key to Clear & Continue. ${btkReset}"
   read -n 1 -s reply
   [[ $reply == 'a' ]] && BTKexit
   clear
-  echo -e "${btkPur} Continuing... ${btkRes}"
+  echo -e "${btkBluFg} Continuing... ${btkReset}"
 }
 BTKask(){
-  echo -e "${btkCya} ${1}${btkRes}"
-  echo -e "${btkRev} Enter y for yes, n for no, any other key to abort...${btkRes}"
+  echo -e "${btkCyaBg} ${1}${btkReset}"
+  echo -e "${btkCyaFg} Enter y for yes, n for no, any other key to abort...${btkReset}"
   read -n 1 -s btkYN
   [[ "$btkYN" != [yn] ]] && BTKexit
   echo -e "\n"
@@ -66,17 +66,21 @@ BTKask(){
 BTKaskConfirm(){
   local confirm='n'
   until [[ $confirm == 'y' ]]; do
-    echo -e "${btkCya} ${1}${btkRes}"
+    echo -e "${btkCyaBg} ${1}${btkReset}"
     read btkAnswer
     [[ $btkAnswer == '' ]] && btkAnswerEng='*No Input*' || btkAnswerEng=$btkAnswer
-    echo -e "${btkRev} Your answer was $btkAnswerEng, is this correct? (y/n)... ${btkRes}"
+    echo -e "${btkCyaFg} Your answer was\n${btkGreFg}$btkAnswerEng\n${btkCyaFg}Is this correct? (y|n) ${btkReset}"
     read -n 1 -s confirm
   done
   echo -e "\n"
 }
+declare -ag btkRunCommands
 BTKrun(){
-  "$@"
-  [[ $? -eq 0 ]] && BTKsuccess "Command Succeeded (${@})." || { echo >&2 -e "${btkRed}Command Failed (${@}). Exiting...${btkRes}"; exit 1; }
+  for i in "${btkRunCommands[@]}"; do
+    sleep 1
+    $i
+    [[ $? -eq 0 ]] && BTKsuccess "Command Succeeded (${i})." || BTKerror "Command Failed (${i})."
+  done
 }
 BTKcmdCheck(){
   [[ $? -eq 0 ]] && BTKsuccess "Command Succeeded (${1})." || BTKerror "Command Failed (${1})."
@@ -98,9 +102,9 @@ BTKgrepCheckReverse () {
 grep "$1" -q "$2" && BTKerror "$1 INCORRECTLY found in $2" || BTKsuccess "$1 correctly not found in $2"
 }
 BTKshowFile(){
-echo -e "\n${btkBlu}*** Showing File contents $1 ***${btkRes}\n"
-echo -e "${btkLtBlu}$( cat $1 )${btkRes}"
-echo -e "\n${btkBlu}*** End showing file contents ***${btkRes}\n"
+echo -e "\n${btkBluBg}*** Showing File contents $1 ***${btkReset}\n"
+echo -e "${btkBluFg}$( cat $1 )${btkReset}"
+echo -e "\n${btkBluBg}*** End showing file contents ***${btkReset}\n"
 }
 BTKmakeCron(){
 crontab -l -u root | grep -F -i -v "$1" | { cat; echo "$2"; } | crontab -
@@ -119,15 +123,15 @@ local -a installAsk=("$@")
 local -a installTry
 local -ga installOK
 BTKinfo 'Package Installation...'
-echo -e "${btkLtBlu} Updating Package Database... ${btkRes}"
+echo -e "${btkBluFg} Updating Package Database... ${btkReset}"
 apt update &>/dev/null
-echo -e "${btkLtBlu} Checking if already installed... ${btkRes}"
+echo -e "${btkBluFg} Checking if already installed... ${btkReset}"
 for i in ${installAsk[@]}; do
   BTKisInstalled "$i" && BTKerror "$i Already installed." || installTry+=("$i")
 done
 BTKsuccess 'Checking complete...'
-echo -e "${btkLtBlu} Installing the following software...${installTry[@]} ${btkRes}"
-BTKpause
+echo -e "${btkBluFg} Installing the following software...${installTry[@]} ${btkReset}"
+sleep 2
 DEBIAN_FRONTEND=noninteractive apt install -y "${installTry[@]}"
 for i in ${installTry[@]}; do
   if BTKisInstalled "$i"; then
@@ -136,6 +140,7 @@ for i in ${installTry[@]}; do
   else
     BTKerror "$i NOT installed"
   fi
+  sleep 1
 done
 BTKinfo 'Package installation complete.'
 }
@@ -213,38 +218,37 @@ declare -ag btkMenuOptions
 BTKmenu(){
   local doConfirm=${1:-"y"}
   local heading=${2:-"Menu Heading"}
-  local prompt=${3:-"Press a letter to choose: "}
+  local prompt=${3:-"Type the letter of your choice:"}
   while true; do
-  clear
-  echo -e "${btkPur} ${heading}${btkRes}"
-  local chars=( {a..p} {r..w} {y..z} )
-  local menuChars=()
-  for i in "${!btkMenuOptions[@]}"; do
-    echo -e "${btkLtpur} ["${chars[i]}"] - ${btkMenuOptions[$i]}${btkRes}"
-    menuChars+=("${chars[i]}")
-  done
-menuChars+=('q' 'x')
-echo -e "${btkLtPur} [q] - Quit this Menu${btkRes}"
-echo -e "${btkLtPur} [x] - Exit this Script${btkRes}"
-  echo -e "${btkCya} ${prompt}${btkRes}"
-  echo -e "${btkPur} ${btkRes}"
-read -n1 -s btkMenuAnswer
-local count=0
-for i in "${menuChars[@]}"; do
-    if [ "$i" == "${btkMenuAnswer}" ] ; then
-      [[ "$i" == 'x' ]] && BTKexit
-      [[ "$i" == 'q' ]] && return
-      if [[ $doConfirm == 'y' ]]; then
-        echo -e "${btkGre} You chose ${btkRes}${btkLtGre} ${btkMenuOptions[$count]} ${btkRes}\n${btkRev} Is this correct (y or n)?${btkRes}"
-        read -n1 -s confirm
-        [[ $confirm == 'y' ]] && return
-      else
+    clear
+    echo -e "${btkCyaBg} ${heading}${btkReset}"
+    local chars=( {a..p} {r..w} {y..z} )
+    local menuChars=()
+    for i in "${!btkMenuOptions[@]}"; do
+      echo -e "${btkGreFg} ["${chars[i]}"] ${btkCyaFg}${btkMenuOptions[$i]}${btkReset}"
+      menuChars+=("${chars[i]}")
+    done
+    menuChars+=('q' 'x')
+    echo -e "${btkGreFg} [q] ${btkCyaFg}Quit this Menu${btkReset}"
+    echo -e "${btkGreFg} [x] ${btkCyaFg}Exit this Script${btkResert}"
+    echo -e "${btkCyaBg} ${prompt}${btkReset}"
+    read -n1 -s btkMenuAnswer
+    local count=0
+    for i in "${menuChars[@]}"; do
+      if [ "$i" == "${btkMenuAnswer}" ] ; then
+        [[ "$i" == 'x' ]] && BTKexit
+        [[ "$i" == 'q' ]] && return
+        if [[ $doConfirm == 'y' ]]; then
+          echo -e "${btkCyaFg}You chose\n${btkGreFg} ${btkMenuOptions[$count]}\n${btkCyaFg}Is this correct (y|n)?${btkReset}"
+          read -n1 -s confirm
+          [[ $confirm == 'y' ]] && return
+        else
         return
       fi
     fi
-((count++))
-done
-done
+    ((count++))
+    done
+  done
 }
 
 # start bashDB
